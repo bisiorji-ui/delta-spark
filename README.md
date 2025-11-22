@@ -1,7 +1,250 @@
-# Delta-Spark
+# Delta-Spark Smart Contract
 
-Delta-Spark is a revolutionary zero-knowledge identity verification system that enables users to prove specific attributes about themselves without revealing the underlying data. The platform combines zk-SNARKs with a reputation oracle network to create verifiable identity proofs that are completely privacy-preserving, allowing users to generate cryptographic proofs for attributes like age ranges, income brackets, educational credentials, or professional certifications without exposing actual values.
+## Description
 
-The technical architecture features modular proof generators for different attribute types, a distributed oracle network for external data validation, and interoperable smart contracts that work across multiple blockchain networks. The system introduces temporal identity fragments where users can create time-locked identity proofs that expire automatically, while smart contracts manage identity fragment generation, proof verification, and reputation scoring through sophisticated algorithms. Users maintain complete control through a hierarchical key management system that allows granular permission controls and instant revocation capabilities.
+Delta-Spark is a privacy-preserving identity verification smart contract built on Stacks blockchain using Clarity. The contract enables users to create temporal identity fragments (time-locked cryptographic proofs) for various attributes without revealing the underlying data. It implements a comprehensive reputation system with anonymous endorsements, oracle validation, and fragment verification capabilities.
 
-Delta-Spark enables transformative real-world applications including anonymous hiring where employers can verify candidate qualifications without bias, privacy-preserving lending where borrowers prove creditworthiness without exposing financial details, and trustless age verification for digital services. The platform's reputation system works through anonymous endorsements where verified entities can vouch for others without revealing their identities, creating a strengthening web of trust over time. This approach prevents data persistence while enhancing privacy protection and giving users unprecedented control over their digital identity.
+The contract provides a decentralized framework for managing identity proofs with built-in expiration, revocation mechanisms, and reputation scoring. Users can prove specific attributes about themselves while maintaining complete privacy, and the system supports a distributed oracle network for external validation of identity fragments.
+
+## Features
+
+- **Temporal Identity Fragments**: Create time-locked identity proofs that automatically expire after a specified number of blocks
+- **Privacy-Preserving Verification**: Verify identity attributes using cryptographic proof hashes without revealing underlying data
+- **Reputation System**: Track user reputation scores based on verified fragments and endorsements
+- **Anonymous Endorsements**: Allow verified users to endorse others without revealing their identities using cryptographic hashes
+- **Oracle Network**: Support for distributed oracle validators to validate identity fragments
+- **Attribute Type Registry**: Configurable attribute types with reputation requirements and verification settings
+- **Revocation Mechanism**: Users can instantly revoke their identity fragments
+- **Fragment Expiration**: Automatic expiration of identity proofs based on block height
+- **Verification Tracking**: Complete audit trail of all verifications with scores and timestamps
+- **Platform Statistics**: Real-time tracking of total proofs, verifications, and oracle activity
+
+## Contract Functions
+
+### Public Functions
+
+#### `initialize-identity`
+Creates a new user identity record with zero reputation and fragment count.
+- **Parameters**: None
+- **Returns**: `(ok true)` on success, `ERR-ALREADY-EXISTS` if identity exists
+- **Usage**: Must be called before creating identity fragments
+
+#### `create-identity-fragment`
+Creates a new temporal identity fragment with specified attribute type and expiration.
+- **Parameters**:
+  - `attribute-type (string-ascii 50)`: Type of attribute being proven
+  - `proof-hash (buff 32)`: Cryptographic hash of the proof
+  - `validity-blocks (uint)`: Number of blocks until expiration
+- **Returns**: `(ok fragment-id)` on success
+- **Requires**: User identity must exist, attribute type must be enabled
+
+#### `verify-fragment`
+Verifies an identity fragment and updates reputation scores.
+- **Parameters**:
+  - `fragment-id (uint)`: ID of fragment to verify
+  - `attribute-confirmed (bool)`: Whether verification passed
+  - `verification-score (uint)`: Score to add to reputation
+- **Returns**: `(ok proof-id)` on success
+- **Requires**: Fragment must be valid (not expired, not revoked)
+
+#### `revoke-fragment`
+Revokes an identity fragment, making it invalid for future verifications.
+- **Parameters**:
+  - `fragment-id (uint)`: ID of fragment to revoke
+- **Returns**: `(ok true)` on success
+- **Requires**: Caller must be fragment owner
+
+#### `create-endorsement`
+Creates an anonymous endorsement for another user, boosting their reputation.
+- **Parameters**:
+  - `endorsed-user (principal)`: User being endorsed
+  - `attribute-type (string-ascii 50)`: Type of attribute endorsed
+  - `endorser-hash (buff 32)`: Cryptographic hash of endorser identity
+  - `weight (uint)`: Reputation weight of endorsement
+- **Returns**: `(ok endorsement-id)` on success
+- **Requires**: Endorser must have reputation >= 50, both users must have identities
+
+#### `register-oracle`
+Registers a new oracle validator in the network (owner only).
+- **Parameters**:
+  - `oracle-address (principal)`: Address of oracle to register
+- **Returns**: `(ok oracle-id)` on success
+- **Requires**: Caller must be contract owner
+
+#### `deactivate-oracle`
+Deactivates an oracle validator (owner only).
+- **Parameters**:
+  - `oracle-id (uint)`: ID of oracle to deactivate
+- **Returns**: `(ok true)` on success
+- **Requires**: Caller must be contract owner
+
+#### `oracle-validate-fragment`
+Allows registered oracles to validate identity fragments.
+- **Parameters**:
+  - `oracle-id (uint)`: ID of calling oracle
+  - `fragment-id (uint)`: Fragment to validate
+  - `validation-score (uint)`: Reputation score to add
+- **Returns**: `(ok true)` on success
+- **Requires**: Oracle must be active, caller must be registered oracle address
+
+#### `register-attribute-type`
+Registers a new attribute type (owner only).
+- **Parameters**:
+  - `attribute-name (string-ascii 50)`: Name of attribute type
+  - `min-reputation (uint)`: Minimum reputation required
+  - `verification-required (bool)`: Whether verification is required
+- **Returns**: `(ok true)` on success
+- **Requires**: Caller must be contract owner
+
+#### `disable-attribute-type`
+Disables an existing attribute type (owner only).
+- **Parameters**:
+  - `attribute-name (string-ascii 50)`: Name of attribute type to disable
+- **Returns**: `(ok true)` on success
+- **Requires**: Caller must be contract owner
+
+#### `update-platform-fee`
+Updates the platform fee (owner only).
+- **Parameters**:
+  - `new-fee (uint)`: New fee in micro-STX
+- **Returns**: `(ok true)` on success
+- **Requires**: Caller must be contract owner
+
+### Read-Only Functions
+
+#### `get-identity-fragment`
+Retrieves identity fragment details by ID.
+- **Parameters**: `fragment-id (uint)`
+- **Returns**: Fragment data or `none`
+
+#### `get-user-identity`
+Retrieves user identity information.
+- **Parameters**: `user (principal)`
+- **Returns**: User identity data or `none`
+
+#### `get-proof-verification`
+Retrieves proof verification record.
+- **Parameters**: `proof-id (uint)`
+- **Returns**: Verification data or `none`
+
+#### `get-oracle-info`
+Retrieves oracle information.
+- **Parameters**: `oracle-id (uint)`
+- **Returns**: Oracle data or `none`
+
+#### `get-endorsement`
+Retrieves endorsement details.
+- **Parameters**: `endorsement-id (uint)`
+- **Returns**: Endorsement data or `none`
+
+#### `is-fragment-valid`
+Checks if a fragment is valid (not expired and not revoked).
+- **Parameters**: `fragment-id (uint)`
+- **Returns**: `true` if valid, `false` otherwise
+
+#### `is-attribute-enabled`
+Checks if an attribute type is enabled.
+- **Parameters**: `attribute-name (string-ascii 50)`
+- **Returns**: `true` if enabled, `false` otherwise
+
+#### `get-platform-stats`
+Retrieves platform-wide statistics.
+- **Parameters**: None
+- **Returns**: Object with total-proofs, total-verifications, oracle-count, platform-fee
+
+## Usage Examples
+
+### Initialize a new user identity
+```clarity
+(contract-call? .delta-spark initialize-identity)
+```
+
+### Register an attribute type (contract owner)
+```clarity
+(contract-call? .delta-spark register-attribute-type "age-range" u10 true)
+```
+
+### Create an identity fragment for age verification
+```clarity
+(contract-call? .delta-spark create-identity-fragment
+  "age-range"
+  0x1234567890abcdef1234567890abcdef1234567890abcdef1234567890abcdef
+  u144) ;; expires in ~1 day
+```
+
+### Verify a fragment
+```clarity
+(contract-call? .delta-spark verify-fragment u1 true u10)
+```
+
+### Create an anonymous endorsement
+```clarity
+(contract-call? .delta-spark create-endorsement
+  'ST1PQHQKV0RJXZFY1DGX8MNSNYVE3VGZJSRTPGZGM
+  "professional-cert"
+  0xabcdef1234567890abcdef1234567890abcdef1234567890abcdef1234567890
+  u5)
+```
+
+### Check if a fragment is valid
+```clarity
+(contract-call? .delta-spark is-fragment-valid u1)
+```
+
+### Revoke your own fragment
+```clarity
+(contract-call? .delta-spark revoke-fragment u1)
+```
+
+### Register an oracle (contract owner)
+```clarity
+(contract-call? .delta-spark register-oracle 'ST1PQHQKV0RJXZFY1DGX8MNSNYVE3VGZJSRTPGZGM)
+```
+
+### Get platform statistics
+```clarity
+(contract-call? .delta-spark get-platform-stats)
+```
+
+## Testing
+
+To test the Delta-Spark smart contract:
+
+1. Navigate to the project directory:
+```bash
+cd delta-spark/delta-spark
+```
+
+2. Run Clarinet check to validate syntax:
+```bash
+clarinet check
+```
+
+3. Run the test suite:
+```bash
+npm install
+npm test
+```
+
+4. Test in Clarinet console:
+```bash
+clarinet console
+```
+
+5. Example test sequence in console:
+```clarity
+;; Initialize identity
+(contract-call? .delta-spark initialize-identity)
+
+;; Register attribute type (as contract owner)
+(contract-call? .delta-spark register-attribute-type "age-range" u10 true)
+
+;; Create fragment
+(contract-call? .delta-spark create-identity-fragment "age-range" 0x1234567890abcdef1234567890abcdef1234567890abcdef1234567890abcdef u144)
+
+;; Verify fragment validity
+(contract-call? .delta-spark is-fragment-valid u1)
+
+;; Get platform stats
+(contract-call? .delta-spark get-platform-stats)
+```
